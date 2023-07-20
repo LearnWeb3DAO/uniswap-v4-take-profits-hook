@@ -14,4 +14,3 @@ lib/periphery-next:forge-std/=lib/periphery-next/lib/forge-std/src/
 lib/periphery-next:openzeppelin-contracts/=lib/periphery-next/lib/openzeppelin-contracts/
 lib/periphery-next:solmate/=lib/periphery-next/lib/v4-core/lib/solmate/src/
 lib/periphery-next:v4-core/=lib/periphery-next/lib/v4-core/contracts/
-v4-core-test/=lib/periphery-next/lib/v4-core/test/
