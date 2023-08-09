@@ -9,8 +9,9 @@ import {GasSnapshot} from "forge-gas-snapshot/GasSnapshot.sol";
 import {TestERC20} from "v4-core/test/TestERC20.sol";
 
 // Libraries
-import {CurrencyLibrary, Currency} from "v4-core/libraries/CurrencyLibrary.sol";
-import {PoolId, PoolIdLibrary} from "v4-core/libraries/PoolId.sol";
+import {CurrencyLibrary, Currency} from "v4-core/types/Currency.sol";
+import {PoolId, PoolIdLibrary} from "v4-core/types/PoolId.sol";
+import {PoolKey} from "v4-core/types/PoolKey.sol";
 import {Hooks} from "v4-core/libraries/Hooks.sol";
 import {TickMath} from "v4-core/libraries/TickMath.sol";
 
@@ -30,7 +31,7 @@ import {TakeProfitsStub} from "../src/TakeProfitsStub.sol";
 
 contract TakeProfitsHookTest is Test, GasSnapshot {
     // Use the libraries
-    using PoolIdLibrary for IPoolManager.PoolKey;
+    using PoolIdLibrary for PoolKey;
     using CurrencyLibrary for Currency;
 
     // Hardcode the address for our hook instead of deploying it
@@ -58,7 +59,7 @@ contract TakeProfitsHookTest is Test, GasSnapshot {
     TestERC20 token1;
 
     // poolKey and poolId are the pool key and pool id for the pool
-    IPoolManager.PoolKey poolKey;
+    PoolKey poolKey;
     PoolId poolId;
 
     // SQRT_RATIO_1_1 is the Q notation for sqrtPriceX96 where price = 1
@@ -282,7 +283,7 @@ contract TakeProfitsHookTest is Test, GasSnapshot {
         swapRouter = new PoolSwapTest(IPoolManager(address(poolManager)));
 
         // Specify the pool key and pool id for the new pool
-        poolKey = IPoolManager.PoolKey({
+        poolKey = PoolKey({
             currency0: Currency.wrap(address(token0)),
             currency1: Currency.wrap(address(token1)),
             fee: 3000,

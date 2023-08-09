@@ -5,17 +5,18 @@ import {BaseHook} from "periphery-next/BaseHook.sol";
 import {ERC1155} from "openzeppelin-contracts/contracts/token/ERC1155/ERC1155.sol";
 import {IPoolManager} from "v4-core/interfaces/IPoolManager.sol";
 import {Hooks} from "v4-core/libraries/Hooks.sol";
-import {PoolId, PoolIdLibrary} from "v4-core/libraries/PoolId.sol";
-import {Currency, CurrencyLibrary} from "v4-core/libraries/CurrencyLibrary.sol";
+import {PoolId, PoolIdLibrary} from "v4-core/types/PoolId.sol";
+import {Currency, CurrencyLibrary} from "v4-core/types/Currency.sol";
+import {PoolKey} from "v4-core/types/PoolKey.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {TickMath} from "v4-core/libraries/TickMath.sol";
 import {BalanceDelta} from "v4-core/types/BalanceDelta.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
 contract TakeProfitsHook is BaseHook, ERC1155 {
-    // Use the PoolIdLibrary for IPoolManager.PoolKey to add the `.toId()` function on a PoolKey
+    // Use the PoolIdLibrary for PoolKey to add the `.toId()` function on a PoolKey
     // which hashes the PoolKey struct into a bytes32 value
-    using PoolIdLibrary for IPoolManager.PoolKey;
+    using PoolIdLibrary for PoolKey;
 
     // Use the CurrencyLibrary for the Currency struct
     using CurrencyLibrary for Currency;
@@ -45,7 +46,7 @@ contract TakeProfitsHook is BaseHook, ERC1155 {
     mapping(uint256 tokenId => TokenData) public tokenIdData;
 
     struct TokenData {
-        IPoolManager.PoolKey poolKey;
+        PoolKey poolKey;
         int24 tick;
         bool zeroForOne;
     }
@@ -74,7 +75,7 @@ contract TakeProfitsHook is BaseHook, ERC1155 {
     // Hooks
     function afterInitialize(
         address,
-        IPoolManager.PoolKey calldata key,
+        PoolKey calldata key,
         uint160,
         int24 tick
     ) external override poolManagerOnly returns (bytes4) {
@@ -84,7 +85,7 @@ contract TakeProfitsHook is BaseHook, ERC1155 {
 
     function afterSwap(
         address,
-        IPoolManager.PoolKey calldata key,
+        PoolKey calldata key,
         IPoolManager.SwapParams calldata params,
         BalanceDelta
     ) external override poolManagerOnly returns (bytes4) {
@@ -138,7 +139,7 @@ contract TakeProfitsHook is BaseHook, ERC1155 {
 
     // Core Utilities
     function placeOrder(
-        IPoolManager.PoolKey calldata key,
+        PoolKey calldata key,
         int24 tick,
         uint256 amountIn,
         bool zeroForOne
@@ -176,7 +177,7 @@ contract TakeProfitsHook is BaseHook, ERC1155 {
     }
 
     function cancelOrder(
-        IPoolManager.PoolKey calldata key,
+        PoolKey calldata key,
         int24 tick,
         bool zeroForOne
     ) external {
@@ -202,7 +203,7 @@ contract TakeProfitsHook is BaseHook, ERC1155 {
     }
 
     function fillOrder(
-        IPoolManager.PoolKey calldata key,
+        PoolKey calldata key,
         int24 tick,
         bool zeroForOne,
         int256 amountIn
@@ -241,7 +242,7 @@ contract TakeProfitsHook is BaseHook, ERC1155 {
     }
 
     function _handleSwap(
-        IPoolManager.PoolKey calldata key,
+        PoolKey calldata key,
         IPoolManager.SwapParams calldata params
     ) external returns (BalanceDelta) {
         // delta is the BalanceDelta struct that stores the delta balance changes
@@ -339,7 +340,7 @@ contract TakeProfitsHook is BaseHook, ERC1155 {
 
     // ERC-1155 Helpers
     function getTokenId(
-        IPoolManager.PoolKey calldata key,
+        PoolKey calldata key,
         int24 tickLower,
         bool zeroForOne
     ) public pure returns (uint256) {
