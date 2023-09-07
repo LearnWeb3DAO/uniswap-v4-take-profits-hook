@@ -74,20 +74,22 @@ contract TakeProfitsHook is BaseHook, ERC1155 {
 
     // Hooks
     function afterInitialize(
-        address,
-        PoolKey calldata key,
-        uint160,
-        int24 tick
-    ) external override poolManagerOnly returns (bytes4) {
+        address, 
+        PoolKey calldata key, 
+        uint160, 
+        int24 tick,
+        bytes calldata
+    ) external virtual override poolManagerOnly returns (bytes4) {
         _setTickLowerLast(key.toId(), _getTickLower(tick, key.tickSpacing));
         return TakeProfitsHook.afterInitialize.selector;
     }
 
     function afterSwap(
-        address,
+        address, 
         PoolKey calldata key,
         IPoolManager.SwapParams calldata params,
-        BalanceDelta
+        BalanceDelta,
+        bytes calldata
     ) external override poolManagerOnly returns (bytes4) {
         int24 lastTickLower = tickLowerLasts[key.toId()];
 
@@ -247,7 +249,7 @@ contract TakeProfitsHook is BaseHook, ERC1155 {
     ) external returns (BalanceDelta) {
         // delta is the BalanceDelta struct that stores the delta balance changes
         // i.e. Change in Token 0 balance and change in Token 1 balance
-        BalanceDelta delta = poolManager.swap(key, params);
+        BalanceDelta delta = poolManager.swap(key, params, "0x");
 
         // If this swap was a swap for Token 0 to Token 1
         if (params.zeroForOne) {
