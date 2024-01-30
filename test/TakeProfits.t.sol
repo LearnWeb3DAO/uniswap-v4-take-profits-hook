@@ -237,7 +237,7 @@ contract TakeProfitsHookTest is Test {
         PoolSwapTest.TestSettings memory testSettings = PoolSwapTest
             .TestSettings({withdrawTokens: true, settleUsingTransfer: true});
 
-        // Setup two oneForZero orders at ticks 0 and 60
+        // Setup two zeroForOne orders at ticks 0 and 60
         uint256 amount = 1 ether;
 
         token1.approve(address(hook), 10 ether);
