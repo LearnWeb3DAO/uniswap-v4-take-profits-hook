@@ -3,7 +3,6 @@ pragma solidity ^0.8.0;
 
 // Foundry libraries
 import "forge-std/Test.sol";
-import {GasSnapshot} from "forge-gas-snapshot/GasSnapshot.sol";
 
 // Test ERC-20 token implementation
 import {TestERC20} from "v4-core/test/TestERC20.sol";
@@ -29,7 +28,7 @@ import {PoolSwapTest} from "v4-core/test/PoolSwapTest.sol";
 import {TakeProfitsHook} from "../src/TakeProfitsHook.sol";
 import {TakeProfitsStub} from "../src/TakeProfitsStub.sol";
 
-contract TakeProfitsHookTest is Test, GasSnapshot {
+contract TakeProfitsHookTest is Test {
     // Use the libraries
     using PoolIdLibrary for PoolKey;
     using CurrencyLibrary for Currency;
@@ -232,6 +231,47 @@ contract TakeProfitsHookTest is Test, GasSnapshot {
         uint256 newToken0Balance = token0.balanceOf(address(this));
 
         assertEq(newToken0Balance - originalToken0Balance, claimableTokens);
+    }
+
+    function test_multiple_orderExecute_oneForZero() public {
+        PoolSwapTest.TestSettings memory testSettings = PoolSwapTest
+            .TestSettings({withdrawTokens: true, settleUsingTransfer: true});
+
+        // Setup two oneForZero orders at ticks 0 and 60
+        uint256 amount = 1 ether;
+
+        token1.approve(address(hook), 10 ether);
+        token0.approve(address(hook), 10 ether);
+        hook.placeOrder(poolKey, 0, amount, true);
+        hook.placeOrder(poolKey, 60, amount, true);
+
+        // Do a swap to make tick increase to 120
+        IPoolManager.SwapParams memory params = IPoolManager.SwapParams({
+            zeroForOne: false,
+            amountSpecified: 0.5 ether,
+            sqrtPriceLimitX96: TickMath.MAX_SQRT_RATIO - 1
+        });
+
+        swapRouter.swap(poolKey, params, testSettings);
+
+        // Only one order should have been executed
+        // because the execution of that order would lower the tick
+        // so even though tick increased to 120
+        // the first order execution will lower it back down
+        // so order at tick = 60 will not be executed
+        int256 tokensLeftToSell = hook.takeProfitPositions(
+            poolId,
+            0,
+            true
+        );
+        assertEq(tokensLeftToSell, 0);
+
+        tokensLeftToSell = hook.takeProfitPositions(
+            poolId,
+            60,
+            true
+        );
+        assertEq(tokensLeftToSell, int(amount));
     }
 
     function _addLiquidityToPool() private {
