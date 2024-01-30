@@ -12,6 +12,7 @@ import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {TickMath} from "v4-core/libraries/TickMath.sol";
 import {BalanceDelta} from "v4-core/types/BalanceDelta.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
+import "forge-std/console.sol";
 
 contract TakeProfitsHook is BaseHook, ERC1155 {
     // Use the PoolIdLibrary for PoolKey to add the `.toId()` function on a PoolKey
@@ -84,21 +85,31 @@ contract TakeProfitsHook is BaseHook, ERC1155 {
     }
 
     function afterSwap(
-        address,
+        address addr,
         PoolKey calldata key,
         IPoolManager.SwapParams calldata params,
-        BalanceDelta
+        BalanceDelta 
     ) external override poolManagerOnly returns (bytes4) {
-        int24 lastTickLower = tickLowerLasts[key.toId()];
+        if (addr == address(this)) {
+            return TakeProfitsHook.afterSwap.selector;
+        }
 
+        bool attemptToFillMoreOrders = true;
+        int24 currentTickLower;
+        while (attemptToFillMoreOrders) {
+            (attemptToFillMoreOrders, currentTickLower) = _tryFulfillingOrders(key, params);
+            tickLowerLasts[key.toId()] = currentTickLower;
+        }
+
+        return TakeProfitsHook.afterSwap.selector;
+    }
+
+    function _tryFulfillingOrders(PoolKey calldata key, IPoolManager.SwapParams calldata params) internal returns (bool, int24) {
         // Get the exact current tick and use it to calculate the currentTickLower
         (, int24 currentTick, , , , ) = poolManager.getSlot0(key.toId());
         int24 currentTickLower = _getTickLower(currentTick, key.tickSpacing);
+        int24 lastTickLower = tickLowerLasts[key.toId()];
 
-        // We execute orders in the opposite direction
-        // i.e. if someone does a zeroForOne swap to increase price of Token 1, we execute
-        // all orders that are oneForZero
-        // and vice versa
         bool swapZeroForOne = !params.zeroForOne;
 
         int256 swapAmountIn;
@@ -113,6 +124,12 @@ contract TakeProfitsHook is BaseHook, ERC1155 {
                 ];
                 if (swapAmountIn > 0) {
                     fillOrder(key, tick, swapZeroForOne, swapAmountIn);
+
+                    // The fulfillment of the above order has changed the current tick
+                    // Refetch it and return
+                    (, currentTick, , , , ) = poolManager.getSlot0(key.toId());
+                    currentTickLower = _getTickLower(currentTick, key.tickSpacing);
+                    return (true, currentTickLower);
                 }
                 tick += key.tickSpacing;
             }
@@ -127,14 +144,18 @@ contract TakeProfitsHook is BaseHook, ERC1155 {
                 ];
                 if (swapAmountIn > 0) {
                     fillOrder(key, tick, swapZeroForOne, swapAmountIn);
+
+                    // The fulfillment of the above order has changed the current tick
+                    // Refetch it and return
+                    (, currentTick, , , , ) = poolManager.getSlot0(key.toId());
+                    currentTickLower = _getTickLower(currentTick, key.tickSpacing);
+                    return (true, currentTickLower);
                 }
                 tick -= key.tickSpacing;
             }
         }
 
-        tickLowerLasts[key.toId()] = currentTickLower;
-
-        return TakeProfitsHook.afterSwap.selector;
+        return (false, currentTickLower);
     }
 
     // Core Utilities
@@ -208,6 +229,10 @@ contract TakeProfitsHook is BaseHook, ERC1155 {
         bool zeroForOne,
         int256 amountIn
     ) internal {
+
+        console.log("Filling order at tick = ");
+        console.logInt(tick);
+
         // Setup the swapping parameters
         IPoolManager.SwapParams memory swapParams = IPoolManager.SwapParams({
             zeroForOne: zeroForOne,
