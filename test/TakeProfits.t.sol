@@ -233,7 +233,7 @@ contract TakeProfitsHookTest is Test {
         assertEq(newToken0Balance - originalToken0Balance, claimableTokens);
     }
 
-    function test_multiple_orderExecute_oneForZero() public {
+    function test_multiple_orderExecute_zeroForOne() public {
         PoolSwapTest.TestSettings memory testSettings = PoolSwapTest
             .TestSettings({withdrawTokens: true, settleUsingTransfer: true});
 
